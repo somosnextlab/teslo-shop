@@ -1,6 +1,6 @@
 // Esto representa lo que hay en la base de datos, como una tabla
 
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { BeforeInsert, Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class Product {
@@ -49,4 +49,17 @@ export class Product {
     //tags
 
     //images
+
+    //Antes de guardar en la DB
+    @BeforeInsert()
+    checkSlugInstert() {
+        if ( !this.slug ) {
+            this.slug = this.title
+        }
+        
+        this.slug = this.slug
+            .toLowerCase()
+            .replaceAll(' ', '_')
+            .replaceAll("'", '')
+    }
 }
