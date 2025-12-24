@@ -130,6 +130,7 @@ export class ProductsService {
       await queryRunner.release();
       //const productToSave = await this.productRepository.save(product);
       return this.findOnePlain( id );
+      
     } catch (error) {
       await queryRunner.rollbackTransaction();
       await queryRunner.release();
