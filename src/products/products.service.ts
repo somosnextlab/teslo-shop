@@ -27,12 +27,12 @@ export class ProductsService {
 
   async create(createProductDto: CreateProductDto) {
 
-    const { images = [], ...productDetails} = createProductDto
+    const { images = [], ...productDetails } = createProductDto
 
     try {
       const producto = this.productRepository.create({
         ...productDetails,
-        images: images.map( image => this.productImageRepository.create({ url: image}) )
+        images: images.map(image => this.productImageRepository.create({ url: image }))
       });
       await this.productRepository.save(producto);
 
@@ -45,16 +45,21 @@ export class ProductsService {
   }
 
   //TODO: Paginar
-  findAll(paginationDto: PaginationDto) {
+  async findAll(paginationDto: PaginationDto) {
     const { limit = 10, offset = 5 } = paginationDto
 
-    const product = this.productRepository.find({
+    const product = await this.productRepository.find({
       take: limit,
       skip: offset,
-      // TODO: relaciones
+      relations: {
+        images: true,
+      }
     })
 
-    return product;
+    return product.map(product => ({
+      ...product,
+      images: product.images?.map(img => img.url)
+    }));
   }
 
 
@@ -67,17 +72,27 @@ export class ProductsService {
     } else {
       //product = await this.productRepository.findOneBy({ slug: term })
       //Creacion de query builder
-      const queryBuilder = this.productRepository.createQueryBuilder();
+      const queryBuilder = this.productRepository.createQueryBuilder('prod');
       product = await queryBuilder.where(`UPPER(title) =:title or slug =:slug`, {
         title: term.toUpperCase(),
         slug: term.toLowerCase(),
-      }).getOne();
+      })
+      .leftJoinAndSelect('prod.images', 'prodImages')
+      .getOne();
     }
 
     if (!product) {
       throw new NotFoundException(`Product with ${term} not found`)
     }
     return product;
+  }
+
+  async findOnePlain( term: string ) {
+    const { images = [], ...rest } = await this.findOne( term );
+    return {
+      ... rest,
+      images: images.map( image => image.url )
+    }
   }
 
   async update(id: string, updateProductDto: UpdateProductDto) {
