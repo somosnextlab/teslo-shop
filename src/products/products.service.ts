@@ -1,8 +1,8 @@
-import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, Logger, NotFoundException, Delete } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 
 import { PaginationDto } from 'src/common/dtos/pagination.dto';
 
@@ -21,6 +21,8 @@ export class ProductsService {
 
     @InjectRepository(ProductImage)
     private readonly productImageRepository: Repository<ProductImage>,
+
+    private readonly dataSource: DataSource,
 
   ) { }
 
@@ -96,19 +98,46 @@ export class ProductsService {
   }
 
   async update(id: string, updateProductDto: UpdateProductDto) {
+    
+    const { images, ...toUpdate } = updateProductDto;
+
+
     const product = await this.productRepository.preload({
-      id: id,
-      ...updateProductDto,
-      images: []
+      id,
+      ...toUpdate
     })
 
     if (!product) throw new NotFoundException(`Product with id ${id} not found`)
 
+      // Create query runer, definimos procedimientos
+      // queryRunner.manager no impacta en la base de datos 
+
+      const queryRunner = this.dataSource.createQueryRunner();
+      await queryRunner.connect();
+      await queryRunner.startTransaction();
+
     try {
-      const productToSave = await this.productRepository.save(product);
-      return productToSave;
+      if ( images ) {
+        await queryRunner.manager.delete( ProductImage, { product: { id } } )
+
+        product.images = images.map( 
+          image => this.productImageRepository.create({ url: image })
+        )
+      } else {
+
+      }
+
+      await queryRunner.manager.save( product );
+
+      await queryRunner.commitTransaction();
+      await queryRunner.release();
+      //const productToSave = await this.productRepository.save(product);
+      return product;
     } catch (error) {
-      this.handleDBExceptions(error)
+      await queryRunner.rollbackTransaction();
+      await queryRunner.release();
+      
+      this.handleDBExceptions(error);
     }
   }
 
