@@ -1,6 +1,6 @@
 // Esto representa lo que hay en la base de datos, como una tabla
 
-import { BeforeInsert, Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { BeforeInsert, BeforeUpdate, Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity()
 export class Product {
@@ -53,10 +53,18 @@ export class Product {
     //Antes de guardar en la DB
     @BeforeInsert()
     checkSlugInstert() {
-        if ( !this.slug ) {
+        if (!this.slug) {
             this.slug = this.title
         }
-        
+
+        this.slug = this.slug
+            .toLowerCase()
+            .replaceAll(' ', '_')
+            .replaceAll("'", '')
+    }
+
+    @BeforeUpdate()
+    checkSlugUpdate() {
         this.slug = this.slug
             .toLowerCase()
             .replaceAll(' ', '_')
