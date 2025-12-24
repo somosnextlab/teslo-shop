@@ -123,16 +123,13 @@ export class ProductsService {
         product.images = images.map( 
           image => this.productImageRepository.create({ url: image })
         )
-      } else {
-
       }
 
       await queryRunner.manager.save( product );
-
       await queryRunner.commitTransaction();
       await queryRunner.release();
       //const productToSave = await this.productRepository.save(product);
-      return product;
+      return this.findOnePlain( id );
     } catch (error) {
       await queryRunner.rollbackTransaction();
       await queryRunner.release();
